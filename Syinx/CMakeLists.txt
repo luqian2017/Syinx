@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.02)
 
+message (STATUS "Syinx Version:0.5.0 ")
+message (STATUS "Syinx Project Compiles , You can add this project file to compile together ")
+
+
 include_directories(
 ./module 
 ./Syinx 
 ./Sylog 
+./Player
 )
 
 file(GLOB srcs 
@@ -12,6 +17,7 @@ file(GLOB srcs
 ./Syinx/*.cpp 
 ./Sylog/*.cpp 
 ./Sylog/*.cc 
+./Player/*.cpp
 )
 
 LINK_DIRECTORIES(/usr/local/lib/)
@@ -23,6 +29,6 @@ TARGET_LINK_LIBRARIES (
 gameserver 
 -lpthread 
 -levent
--lprotobuf
+#-lprotobuf	需要利用protobuf添加lib库
 -lmysqlclient
 )

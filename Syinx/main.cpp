@@ -3,10 +3,8 @@
 using namespace std;
 #include "./Syinx/Syinx.h"
 #include "./Sylog/easylogging++.h"
-#define ELPP_THREAD_SAFE
+
 INITIALIZE_EASYLOGGINGPP;
-
-
 
 int main()
 {
@@ -21,7 +19,7 @@ int main()
 	if (!g_pSyinx.Initialize())
 		return -1;
 
-	g_pSyinx.SyinxKernel_Run();
+	g_pSyinx.Run();
 
-	g_pSyinx.SyinxKernel_Close();
+	g_pSyinx.Close();
 }

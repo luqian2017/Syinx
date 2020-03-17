@@ -1,0 +1,35 @@
+{
+    "GameServer": {
+        "Port": 20001,
+        "ConnectNum": 10000,
+        "Timer-Sec": 1,
+        "UsePthreadPool": true,
+        "PthreadPool": {
+            "PthNum": 8,
+            "TaskNum": 20000
+        },
+        "ConnectServer": {
+            "DBServerIP": "127.0.0.1",
+            "DBServerPort": 20002
+        },
+        "GameConfig": {}
+    },
+    "DBServer": {
+        "Port": 20002,
+		"ConnectNum":1,
+        "Timer-Sec": 1,
+        "UsePthreadPool": false,
+        "PthreadPool": {
+            "PthNum": 4,
+            "TaskNum": 200
+        },
+        "MysqlConfig": {
+			"ConnectNum":5,
+            "IP": "123.56.244.135",
+            "Port": "3306",
+            "Account": "root",
+            "Password": "IwanttoFlyQWQ!1",
+            "DBName": "fly"
+        }
+    }
+}

@@ -1,7 +1,7 @@
 #ifndef __THREADPOOL_H_
 #define __THREADPOOL_H_
 
-
+#define PTHREADFUNCADD(func,arg)		g_SyinxPthPool.AddTaskFunc(func,arg)
 class SyinxKernel;
 class SyinxLog;
 class SyinxAdapterPth;
@@ -53,17 +53,15 @@ public:
 		QueueIsMax = 11,							//任务队列满了
 		PthShutdown = 12,							//关闭
 	};
-	enum PrincipalPthWorkStatus
+	enum PTHREAD_LINK_STATUS
 	{
-		PriPthWork = 1,
-		PriPthWait = 2,
-		PRiPthClose = 3,
-		PriPthOther = 4,
+		PTHREAD_STATUS_CLOSE = 0,
+		PTHREAD_STATUS_WORK = 1,
 	};
 	SyinxPthreadPool();
 	~SyinxPthreadPool();
 
-	static SyinxPthreadPool& MakeSingleton();
+	static SyinxPthreadPool& StaticClass();
 
 	inline threadpool_t* GetPthreadPool()
 	{
@@ -72,12 +70,13 @@ public:
 		else
 			return nullptr;
 	}
-	threadpool_t* threadpool_create(uint32_t thread_count, uint32_t queue_size, uint32_t flags = 0);
+	threadpool_t* Initialize(uint32_t thread_count, uint32_t queue_size, uint32_t flags = 0);
 
-	uint32_t threadpool_add(threadpool_t* pool, void* (*callback)(void*), void* arg, uint32_t flags= 0);
+	uint32_t AddTaskFunc( void* (*callback)(void*), void* arg, uint32_t flags= 0);
 
-	uint32_t  threadpool_destroy(threadpool_t* pool, uint32_t flags = 0);
+	uint32_t  Close( uint32_t flags = 0);
 
+	int PthreadStatus;
 private:
 	threadpool_t* PthPool;
 };

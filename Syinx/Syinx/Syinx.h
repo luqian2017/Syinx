@@ -34,19 +34,20 @@ __________#_______####_______####______________
 #ifndef _Syinx_H_
 #define _Syinx_H_
 
+#include "GameObject.h"
+#include <list>
+
 struct event_base;
 struct evconnlistener;
 struct bufferevent;
 
-//框架其他类声明
 class SyinxLog;
 class IChannel;
-class SyinxAdapterPth;
 class SyinxAdapterResource;
 class SyinxPthreadPool;
 class SyinxKernel;
-class DBServerNet;
-
+class SyinxBase;
+class SConnect;
 //设置线程安全以及关闭底层套接字  
 //set thread and close socket
 #define SETOPT_THREADSAFE_OR_SOCKETS_BLOCKING				(LEV_OPT_LEAVE_SOCKETS_BLOCKING | LEV_OPT_THREADSAFE)
@@ -90,6 +91,7 @@ class DBServerNet;
 #define GETICHANNEL						 (IChannel*)ctx
 
 
+
 struct SyinxKernelTimer_task_t
 {
 	void* (*taskfunc)(void*);
@@ -109,8 +111,10 @@ void SyinxKernel_Event_Cb(struct bufferevent* bev, short what, void* ctx);
 void SIG_HANDLE(int Sig);
 
 
-class SyinxKernel 
+
+class SyinxKernel :public SObject
 {
+
 	enum SYINX_LINK_STATUS
 	{
 		SYINX_LINK_CLOSE ,
@@ -130,37 +134,31 @@ private:
 	int						m_TimerSec;										// timer sec
 	bool					mUsePthreadPool;								//是否使用线程池做高并发
 
-	//DBServer
-	int						m_DBPort;
-	DBServerNet*			m_DBServer;									//dbserver
 
 
-	//libedvent
+	// libevent
 	event_base*				mSyinxBase;								
 	evconnlistener*			mSyinxListen;								
-
-	SyinxAdapterPth*		mSyPth;																 //bing AdapterPth
-	SyinxAdapterResource*	mSyResource;														 //bind AdapterResource
-
+	SyinxAdapterResource*	mSyResource;									//bind AdapterResource
+	list<SConnect*>			m_AllConnect;		
 public:
 	SyinxKernel();
 	~SyinxKernel();
-	static SyinxKernel& MakeSingleton();
-	bool Initialize();
-	void SyinxKernel_Run();
-	void SyinxKernel_Close();
+	static SyinxKernel& StaticClass();
+	bool Initialize() ;
+	void Run();
+	void Close();
 
-
-
-
-
-	inline SyinxAdapterPth*				 GetPth();
 	inline SyinxAdapterResource*		 GetResource();
 	inline event_base*					 GetEventBase();
 	inline evconnlistener*				 GetListener();
 	inline int							 GetPthreadPoolNum()const;
 	inline int							 GetPthreadTaskNum()const;
 
+	void OnStatusConnect();
+
+	static void ListenerConnect(SConnect* sconnect);
+	static void RemoveConnect(SConnect* sconnect);
 	/*
 	*查看电脑大小端如果是小端则返回1，如果是大端则返回0
 	*/
@@ -187,12 +185,11 @@ private:
 	*/
 	bool		RegisterSignal();
 
-	
+
 };
 
-extern SyinxKernel&		g_pSyinx;
-extern uint64_t			g_nGameServerSecond;
-
+extern SyinxKernel&				 g_pSyinx;
+extern uint64_t					 g_nGameServerSecond;
 
 
 uint64_t			GetMselTime();

@@ -5,19 +5,21 @@
 #include "../Sylog/easylogging++.h"
 
 
-SyinxPthreadPool& g_SyinxPthPool = SyinxPthreadPool::MakeSingleton();
+SyinxPthreadPool& g_SyinxPthPool = SyinxPthreadPool::StaticClass();
 
 SyinxPthreadPool::SyinxPthreadPool()
 {
+	PthreadStatus = PTHREAD_STATUS_CLOSE;
 	PthPool = nullptr;
 }
 
 SyinxPthreadPool::~SyinxPthreadPool()
 {
+	PthreadStatus = PTHREAD_STATUS_CLOSE;
 	PthPool = nullptr;
 }
 
-SyinxPthreadPool& SyinxPthreadPool::MakeSingleton()
+SyinxPthreadPool& SyinxPthreadPool::StaticClass()
 {
 	static SyinxPthreadPool mPool;
 	return mPool;
@@ -36,7 +38,7 @@ void* SyPthreadPool_thread(void* dst)
 	SyPthreadPool_task_t PthTask;
 
 	char _buf[1024] = { 0 };
-	sprintf(_buf, "thread EVENT: %ld is Start!", pthread_self());
+	sprintf(_buf, "thread EVENT: %p is Start!", pthread_self());
 	pthread_t upthread_t = pthread_self();
 	LOG(INFO) << _buf;
 	while (true)
@@ -66,7 +68,6 @@ void* SyPthreadPool_thread(void* dst)
 		++Pthpool->HeadIndex;
 		Pthpool->HeadIndex = (Pthpool->HeadIndex == Pthpool->queue_size) ? 0 : Pthpool->HeadIndex;
 		--Pthpool->count;
-
 		// unlock
 		pthread_mutex_unlock(&(Pthpool->Pthlock));
 
@@ -90,10 +91,10 @@ void* SyPthreadPool_thread(void* dst)
 }
 
 // create pthread queue
-threadpool_t* SyinxPthreadPool::threadpool_create(uint32_t thread_count, uint32_t queue_size, uint32_t flags)
+threadpool_t* SyinxPthreadPool::Initialize(uint32_t thread_count, uint32_t queue_size, uint32_t flags)
 {
 
-	SyinxPthreadPool::PthPool = new threadpool_t;
+	PthPool = new threadpool_t;
 	
 	int iRet = 0;
 	//init
@@ -139,32 +140,29 @@ threadpool_t* SyinxPthreadPool::threadpool_create(uint32_t thread_count, uint32_
 		int iRet = pthread_create(&PthPool->threads[i], &Pthattr, SyPthreadPool_thread, (void*)PthPool);
 		if (iRet != 0)
 		{
-
 			SyinxLog::mLog.Log(__FILE__, __LINE__, SyinxLog::LOGERROR, iRet, "pthread_create is failed");
 			return NULL;
 		}
 		PthPool->started += 1;
 	}
+	PthreadStatus = PTHREAD_STATUS_WORK;
 	return PthPool;
 }
 
 
 
-uint32_t SyinxPthreadPool::threadpool_add(threadpool_t* pool, void* (*callback)(void*), void* arg, uint32_t flags)
+uint32_t SyinxPthreadPool::AddTaskFunc( void* (*callback)(void*), void* arg, uint32_t flags)
 {
 	int _Index = 0;
-	if (pool == NULL || callback == NULL)
+	if ( callback == NULL)
 	{
 		return VarIsNULL;
 	}
-	int iRet = 0;
-
-	iRet = pthread_mutex_lock(&PthPool->Pthlock);
-	if (iRet != 0)
+	if (pthread_mutex_lock(&PthPool->Pthlock))
 	{
 		return LockErr;
 	}
-
+	int iRet = 0;
 	_Index = PthPool->TailIndex + 1;
 	_Index = (_Index == PthPool->queue_size) ? 0 : _Index;
 	do
@@ -172,11 +170,12 @@ uint32_t SyinxPthreadPool::threadpool_add(threadpool_t* pool, void* (*callback)(
 		//queue max
 		if (PthPool->queue_size == PthPool->count)
 		{
+			LOG(ERROR) << "Task Queue Is Max";
 			return QueueIsMax;
 		}
 		if (PthPool->PthpoolClose)
 		{
-			iRet = SyinxPthreadPool::threadpool_destroy(SyinxPthreadPool::PthPool, 0);
+			iRet = Close();
 			if (iRet == Success)
 				return Success;
 			else
@@ -202,14 +201,10 @@ uint32_t SyinxPthreadPool::threadpool_add(threadpool_t* pool, void* (*callback)(
 	return Success;
 }
 
-uint32_t SyinxPthreadPool::threadpool_destroy(threadpool_t* pool, uint32_t flags)
+uint32_t SyinxPthreadPool::Close( uint32_t flags)
 {
+	PthreadStatus = PTHREAD_STATUS_CLOSE;
 	int iRet = 0;
-	if (pool == NULL)
-	{
-		return VarIsNULL;
-	}
-
 	iRet = pthread_mutex_lock(&PthPool->Pthlock);
 	if (iRet != 0)
 	{

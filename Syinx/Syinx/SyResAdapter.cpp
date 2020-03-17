@@ -1,10 +1,10 @@
 #include "SyInc.h"
 #include "Syinx.h"
 #include "SyTaskAdapter.h"
-#include "../module/SyPthreadAdapter.h"
-#include "SyResAdapter.h"
 #include "../Sylog/SyLog.h"
 #include "../Sylog/easylogging++.h"
+#include "SyResAdapter.h"
+#include "../module/SyPthreadPool.h"
 
 SyinxAdapterResource::SyinxAdapterResource(int IChNum) :m_IChannelNum(IChNum)
 {
@@ -18,10 +18,10 @@ SyinxAdapterResource::~SyinxAdapterResource()
 
 bool SyinxAdapterResource::Initialize()
 {
-	
 	for (size_t Index  = 0;Index < m_IChannelNum;++Index)
 	{
-		IChannel* tagTemp = new IChannel;
+		IChannel* tagTemp = new IChannel();
+		
 		if (!tagTemp->Initialize())
 		{
 			LOG(ERROR) << "IChannel Initialize Failed";
@@ -29,6 +29,7 @@ bool SyinxAdapterResource::Initialize()
 		}
 		if (tagTemp != nullptr)
 		{
+			tagTemp->SetIChannelID(Index);
 			m_queueILoop.push(tagTemp);
 		}
 		else
@@ -41,14 +42,13 @@ bool SyinxAdapterResource::Initialize()
 		LOG(ERROR) << "Create IChannel failed";
 		return false;
 	}
-
 	LOG(INFO) << "Create IChannel: " << m_queueILoop.size() << " Success";
 	return true;
 	
 }
 
 //将新连接的客户端进行分配
-bool SyinxAdapterResource::AllocationIChannel(bufferevent* buffer, SOCKETS _FD)
+bool SyinxAdapterResource::AllocationIChannel(bufferevent* buffer, intptr_t _FD)
 {
 	if (m_queueILoop.empty())
 	{
@@ -59,37 +59,33 @@ bool SyinxAdapterResource::AllocationIChannel(bufferevent* buffer, SOCKETS _FD)
 	IChannel* ICh = m_queueILoop.front();
 	if (ICh == nullptr)
 	{
+		bufferevent_free(buffer);
 		return false;
 	}
+
 	m_queueILoop.pop();
+
+	bufferevent_setcb(buffer, SyinxKernel_Recv_Cb, SyinxKernel_Send_Cb, SyinxKernel_Event_Cb, (void*)ICh);
+
+	bufferevent_setwatermark(buffer, EV_READ, LIBEVENT_READ_WATERMARK, 0);
+
+	bufferevent_enable(buffer, SET_SOCKETS_EVENT_RDWR);
+
 	ICh->OnClientConnect(_FD, buffer);
-	
 	return SocketFdAdd(ICh);
 }
 
 bool SyinxAdapterResource::SocketFdAdd(IChannel* ICh)
 {
 	m_listConnectClient.push_back(ICh);
-	LOG(INFO) << ICh->GetSocket() << " is Connect " << endl;
-	LOG(INFO) << "Current number of client connections : [ " << m_listConnectClient.size()<<" ] ";
-
-	auto _buffer = ICh->GetBuffer();
-	if (nullptr != _buffer)
-	{
-		bufferevent_setcb(_buffer, SyinxKernel_Recv_Cb, SyinxKernel_Send_Cb, SyinxKernel_Event_Cb, (void*)ICh);
-		bufferevent_setwatermark(_buffer, EV_READ, LIBEVENT_READ_WATERMARK,0);
-		bufferevent_enable(_buffer, SET_SOCKETS_EVENT_RDWR);
-	}
 	return true;
 }
 
 bool SyinxAdapterResource::SocketFdDel(IChannel* ICh)
 {
-	LOG(INFO) << ICh->GetSocket() << " DisConnect ";
 	m_listConnectClient.remove(ICh);
 	ICh->Clear();
 	m_queueILoop.push(ICh);
-	LOG(INFO) << "Current number of client connections : [ " << m_listConnectClient.size() << " ] ";
 
 	return true;
 }
@@ -102,11 +98,12 @@ void SyinxAdapterResource::GameServerDoAction()
 	}
 }
 
-bool SyinxAdapterResource::Close()
+
+
+void SyinxAdapterResource::Close()
 {
 	for (auto& Iter : m_listConnectClient)
 	{
-		Iter->Clear();
 		m_queueILoop.push(Iter);
 	}
 	size_t _size = m_queueILoop.size();
@@ -117,11 +114,11 @@ bool SyinxAdapterResource::Close()
 		if (_Ich != nullptr)
 		{
 			_Ich->Clear();
+			_Ich->Close();
 			delete _Ich;
 			_Ich = nullptr;
 		}
 		
 	}
-	return true;
 }
 

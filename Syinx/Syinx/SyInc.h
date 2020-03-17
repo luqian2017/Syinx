@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <fstream>
 #include <istream>
@@ -15,7 +16,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-
+#include <memory>
 using namespace std;
 
 #ifdef POSIX_PTHREAD
@@ -25,7 +26,8 @@ using namespace std;
 #ifdef WIN32
 #include <Winsock2.h>
 #include <windows.h>
-#include <mysql.h>
+#include <WS2tcpip.h>
+
 #ifdef LIBEVENT_IOCP
 #include "event2/event.h"
 #include "event2/bufferevent.h"

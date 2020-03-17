@@ -1,12 +1,11 @@
 #include "SyInc.h"
-#include "../module/SyPthreadAdapter.h"
 #include "../module/SyPthreadPool.h"
 #include "../Sylog/SyLog.h"
 #include "SyResAdapter.h"
 #include "../Sylog/easylogging++.h"
 #include "SyTaskAdapter.h"
 #include "Syinx.h"
-
+#include "SConnect.h"
 
 #include "../module/rapidjson/document.h"
 #include "../module/rapidjson/stringbuffer.h"
@@ -14,15 +13,14 @@
 using namespace rapidjson;
 using rapidjson::Document;
 using rapidjson::Value;
-using namespace std;
 
 
-SyinxKernel& g_pSyinx = SyinxKernel::MakeSingleton();
+SyinxKernel& g_pSyinx = SyinxKernel::StaticClass();
 
 uint64_t	g_nGameServerSecond = 0;
 
 tm	g_tmGameServerTime;
-SyinxKernel& SyinxKernel::MakeSingleton()
+SyinxKernel& SyinxKernel::StaticClass()
 {
 	static SyinxKernel syinx;
 	return syinx;
@@ -38,12 +36,10 @@ SyinxKernel::SyinxKernel()
 	m_endian = 0;
 	mSyinxBase = nullptr;
 	mSyinxListen = nullptr;
-	mSyPth = nullptr;
 	mSyResource = nullptr;
 	mUsePthreadPool = false;
-	m_DBServer = nullptr;
 	m_nWorkStatus = SYINX_LINK_CLOSE;
-
+	m_AllConnect.clear();
 	memset(m_SyinxStatusFunc, 0, sizeof(m_SyinxStatusFunc));
 	m_SyinxStatusFunc[SYINX_LINK_WORK] = &SyinxKernel::OnStatusDoAction;
 	m_SyinxStatusFunc[SYINX_LINK_CLOSE] = &SyinxKernel::OnStatusDoClose;
@@ -59,11 +55,10 @@ SyinxKernel::~SyinxKernel()
 	m_endian = 0;
 	mSyinxBase = nullptr;
 	mSyinxListen = nullptr;
-	mSyPth = nullptr;
 	mSyResource = nullptr;
-	m_DBServer = nullptr;
+	m_AllConnect.clear();
 	m_nWorkStatus = SYINX_LINK_CLOSE;
-	SyinxKernel_Close();
+	Close();
 }
 
 //读出回调
@@ -73,12 +68,9 @@ void SyinxKernel_Recv_Cb(struct bufferevent* bev, void* ctx)
 	if (ICh == nullptr)
 		return;
 
-	char _buffer[READBUFFER] = { 0 };
-	int iRet = bufferevent_read(bev, _buffer, READBUFFER);
+	size_t iRet = bufferevent_read_buffer(bev, ICh->m_Inputevbuffer);
 	if (iRet < 0)
-		return;
-	string _str(_buffer, iRet);
-	ICh->GetClientFrameOnBuffer(_str);
+		LOG(ERROR)<<"Read buffer Failed Errno:"<<iRet;
 
 }
 //写事件回调
@@ -92,18 +84,28 @@ void SyinxKernel_Event_Cb(struct bufferevent* bev, short what, void* ctx)
 {
 	auto mIC = GETICHANNEL;
 	auto Res = g_pSyinx.GetResource();
-	if (what & BEV_EVENT_EOF) // Client端关闭连接 
+
+	if (what & BEV_EVENT_CONNECTED)
+	{
+		
+	}
+	else if (what & BEV_EVENT_ERROR)
+	{
+		
+	}
+	else if (what & BEV_EVENT_TIMEOUT)
+	{
+		mIC->TimeOut();
+	}
+	else if (what & BEV_EVENT_EOF)
 	{
 		Res->SocketFdDel(mIC);
 	}
-	else if (what & BEV_EVENT_ERROR) // 连接出错 
+	else if (what & BEV_EVENT_WRITING)
 	{
 		Res->SocketFdDel(mIC);
 	}
-	else if (what & BEV_EVENT_WRITING)//写入时发生做错误
-	{
-		Res->SocketFdDel(mIC);
-	}
+
 }
 
 void SIG_HANDLE(int Sig)
@@ -111,11 +113,11 @@ void SIG_HANDLE(int Sig)
 	switch (Sig)
 	{
 	case SIGINT:
-		g_pSyinx.SyinxKernel_Close();
+		g_pSyinx.Close();
 		break;
 #ifdef __linux__
 	case SIGQUIT:
-		g_pSyinx.SyinxKernel_Close();
+		g_pSyinx.Close();
 		break;
 #endif
 	default:
@@ -192,7 +194,6 @@ bool SyinxKernel::Initialize()
 	{
 		struct event_config* cfg = event_config_new();
 		if (cfg) {
-			struct event_config* cfg = event_config_new();
 			/*
 			To access base security , unallocable use thread call base
 			*/
@@ -222,7 +223,7 @@ bool SyinxKernel::Initialize()
 		return false;
 	}
 
-
+	OnStatusConnect();
 	m_nWorkStatus = SYINX_LINK_WORK;
 	return true;
 }
@@ -275,7 +276,6 @@ bool SyinxKernel::SyinxKernelReadconfig()
 	mUsePthreadPool = GameServer["UsePthreadPool"].GetBool();
 
 	Value& ConnectServer = GameServer["ConnectServer"];
-	m_DBPort = ConnectServer["DBServerPort"].GetInt();
 
 
 	return true;
@@ -286,21 +286,9 @@ bool SyinxKernel::SyinxKernelInitAdapter()
 	//初始化线程管理器
 	if (m_PthPoolNum > 1 && mUsePthreadPool)
 	{
-		mSyPth = new SyinxAdapterPth(m_PthPoolNum, m_TaskNum);
-		if (nullptr == mSyPth)
+		if (g_SyinxPthPool.Initialize(m_PthPoolNum, m_TaskNum) == NULL)
 		{
-			//log
-			LOG(ERROR) << "new SyinxAdapterPth failed...";
-			return false;
-		}
-		if (mSyPth->SyinxAdapterPth_Init())
-		{
-			LOG(INFO) << "SyinxAdapterPth_Init Success";
-		}
-		else
-		{
-			LOG(ERROR) << "new SyinxAdapterPth failed...";
-			return false;
+			LOG(ERROR) << "Pthread init failed";
 		}
 	}
 	else
@@ -337,6 +325,7 @@ bool SyinxKernel::RegisterSignal()
 	return true;
 }
 
+
 void SyinxKernel::OnStatusDoAction()
 {
 	mSyResource->GameServerDoAction();
@@ -344,15 +333,17 @@ void SyinxKernel::OnStatusDoAction()
 
 void SyinxKernel::OnStatusDoClose()
 {
-	SyinxKernel_Close();
+	Close();
 }
 
-void SyinxKernel::SyinxKernel_Run()
+void SyinxKernel::Run()
 {
 	int iRet = 0;
 	uint64_t BeginMeslTime = 0;
 	uint64_t NextMeslTime = 0;
 
+	uint64_t BeginPingTime = 0;
+	uint64_t NextPingTime = 0;
 	while (m_nWorkStatus)
 	{
 		iRet = event_base_loop(mSyinxBase, EVLOOP_NONBLOCK);
@@ -378,23 +369,16 @@ void SyinxKernel::SyinxKernel_Run()
 		localtime_r(&tmGameServerTime, &g_tmGameServerTime);
 #endif
 		(this->*m_SyinxStatusFunc[m_nWorkStatus])();
-		
 
 	}
 }
 
-void SyinxKernel::SyinxKernel_Close()
+void SyinxKernel::Close()
 {
-	if (!m_nWorkStatus)
+	if (m_nWorkStatus == SYINX_LINK_CLOSE)
 		return;
 	m_nWorkStatus = SYINX_LINK_CLOSE;
 
-	if (mSyPth != nullptr)
-	{
-		mSyPth->SyinxAdapterPth_destroy();
-		delete mSyPth;
-		mSyPth = nullptr;
-	}
 
 	if (mSyResource != nullptr)
 	{
@@ -410,6 +394,12 @@ void SyinxKernel::SyinxKernel_Close()
 		WSACleanup();
 #endif 
 	}
+	for (auto Iter : m_AllConnect)
+	{
+		Iter->Close();
+	}
+
+	g_SyinxPthPool.Close();
 	puts("Syinx is close! \nPress any key to continue!...");
 	getchar();
 	exit(0);
@@ -422,10 +412,6 @@ int SyinxKernel::JudgeSystem(void)
 	return *(char*)&a;
 }
 
-inline SyinxAdapterPth* SyinxKernel::GetPth()
-{
-	return mSyPth;
-}
 inline SyinxAdapterResource* SyinxKernel::GetResource()
 {
 	return mSyResource;
@@ -450,6 +436,26 @@ inline int SyinxKernel::GetPthreadPoolNum() const
 inline int SyinxKernel::GetPthreadTaskNum() const
 {
 	return m_TaskNum;
+}
+
+void SyinxKernel::OnStatusConnect()
+{
+	SConnect* test = new SConnect;
+	if (!test->Connect("192.168.61.128", 15000, "test"))
+	{
+		LOG(ERROR) << "Failed";
+		return;
+	}
+}
+
+void SyinxKernel::ListenerConnect(SConnect* sconnect)
+{
+	g_pSyinx.m_AllConnect.push_back(sconnect);
+}
+
+void SyinxKernel::RemoveConnect(SConnect* sconnect)
+{
+	g_pSyinx.m_AllConnect.remove(sconnect);
 }
 
 int SyinxKernel::GetEndian()
