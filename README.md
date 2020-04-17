@@ -43,7 +43,6 @@ $ make
 $ cd code/Syinx/
 $ mkdir build && cd build
 $ cmake .. -DCMAKE_BUILD_TYPE=Debug/Release
-$ make
 ```
 
 
