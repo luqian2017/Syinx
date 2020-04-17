@@ -1,8 +1,0 @@
-[INFO | 2020-04-17 21:46:56,133] |SyPthreadPool.cpp(42)|thread EVENT: 0x7fd049ae2700 is Start!
-[INFO | 2020-04-17 21:46:56,134] |SyPthreadPool.cpp(42)|thread EVENT: 0x7fd0492e1700 is Start!
-[INFO | 2020-04-17 21:46:56,134] |SyPthreadPool.cpp(42)|thread EVENT: 0x7fd048ae0700 is Start!
-[INFO | 2020-04-17 21:46:56,134] |SyPthreadPool.cpp(42)|thread EVENT: 0x7fd0482df700 is Start!
-[INFO | 2020-04-17 21:46:56,139] |SyResAdapter.cpp(44)|Create IChannel: 10000 Success
-[INFO | 2020-04-17 21:46:56,139] |Syinx.cpp(350)|SyinxAdapterResource_Init Success
-[INFO | 2020-04-17 21:46:56,139] |Syinx.cpp(309)|TCP Server is Open
-[INFO | 2020-04-17 21:46:56,141] |SConnect.cpp(135)|test DisConnect

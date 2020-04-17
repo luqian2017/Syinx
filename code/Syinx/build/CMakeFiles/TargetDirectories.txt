@@ -1,7 +1,0 @@
-/home/syinx/code/Syinx/build/CMakeFiles/install/strip.dir
-/home/syinx/code/Syinx/build/CMakeFiles/edit_cache.dir
-/home/syinx/code/Syinx/build/CMakeFiles/gameserver.dir
-/home/syinx/code/Syinx/build/CMakeFiles/list_install_components.dir
-/home/syinx/code/Syinx/build/CMakeFiles/install/local.dir
-/home/syinx/code/Syinx/build/CMakeFiles/rebuild_cache.dir
-/home/syinx/code/Syinx/build/CMakeFiles/install.dir
