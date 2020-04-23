@@ -42,6 +42,8 @@ $ cmake . -DCMAKE_BUILD_TYPE=Debug/Release
 
 #### Windows中则创建vs工程文件
 
+
+
 # 依赖库(Dependent libraries)
 
 **libevent :安装与访问**
@@ -66,11 +68,11 @@ $ cmake . -DCMAKE_BUILD_TYPE=Debug/Release
 
 easyloggingpp:
 
-[EasyLoggingpp]:https://github.com/amrayn/easyloggingpp
+`https://github.com/amrayn/easyloggingpp`
 
-rapidjson:
+inih:
 
-[rapidjson]:https://github.com/Tencent/rapidjson
+`https://github.com/benhoyt/inih`
 
 
 
@@ -79,17 +81,7 @@ rapidjson:
 # 帮助(Help)
 
 ```c++
-#include "Syinx.h"                //包含框架核心头文件
-#include "SyTaskAdapter.h"        //需要包含任务流程处理头文件
-```
-
-```c++
-#include <stdio.h>
-#include <iostream>
-using namespace std;
-#include "Syinx/include/Tools.hpp"
-#include"pthread.h"
-#include "Syinx/include/SyPthreadPool.h"
+#include "Syinx/include/SyInc.h"
 #include "Syinx/include/Syinx.h"
 
 int main(int argc, char* argv[])
