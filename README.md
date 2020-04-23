@@ -24,10 +24,6 @@ The cross-platform application based on libevent is suitable for game servers, w
 
 # 如何测试(how to test?)
 
-该框架无需安装,可以直接在代码中编辑
-
-编译测试,编译全部代码需要用到 Libevent pthread mysqlclient 第三方库,如果不想链接Syinx自带的mysql模块,则可以删除
-
 ### Linux:
 
 ```
@@ -41,27 +37,10 @@ $ make
 
 ```
 $ cd code/Syinx/
-$ mkdir build && cd build
-$ cmake .. -DCMAKE_BUILD_TYPE=Debug/Release
+$ cmake . -DCMAKE_BUILD_TYPE=Debug/Release
 ```
 
-
-
-#### Windows中需要提前添加的预处理宏
-
-`WIN32`:添加该宏确保在Windows环境下运行
-
-`LIBEVENT_IOCP`:使用Windows下的IOCP网络模型
-
-`POSIX_PTHREAD`:使用posix标准的pthread库
-
-`HAVE_STRUCT_TIMESPEC`:在Windows环境中使用户pthread库需要包含该宏,防止timespe的MSVC编译器的重定义报错
-
-`_CRT_SECURE_NO_WARNINGS`:在Windows环境中使用sprintf等字符串处理函数防止报错
-
-`_WINSOCK_DEPRECATED_NO_WARNINGS` :在Windows中使用windows提供的网络库函数包含该宏防止出现重定义报错,或者出现未定义(未添加Ws2_32.lib依赖库也会出现这个问题)
-
-`SYINX_USE_PTHREAD`:添加该宏意味着放弃单线程模式,所有的逻辑帧都会在多线程中处理,这么做是安全的,在多线程中处理时候会为每一个client分配了一把锁,所以多个线程不会同时分配到同一个client的通道
+#### Windows中则创建vs工程文件
 
 # 依赖库(Dependent libraries)
 
