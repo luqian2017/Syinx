@@ -60,21 +60,21 @@ function(GNUCFunction)
 
 		./pkg/inih/cpp/INIReader.h
 
-		./Syinx/GameObject.h
+		./Syinx/include/GameObject.h
 
-		./Syinx/SConnect.h
+		./Syinx/include/SConnect.h
 
-		./Syinx/Tools.hpp
+		./Syinx/include/Tools.hpp
 
-		./Syinx/SyInc.h
+		./Syinx/include/SyInc.h
 
-		./Syinx/Syinx.h
+		./Syinx/include/Syinx.h
 
-		./Syinx/SyPthreadPool.h
+		./Syinx/include/SyPthreadPool.h
 
-		./Syinx/SyResAdapter.h
+		./Syinx/include/SyResAdapter.h
 
-		./Syinx/SyTaskAdapter.h
+		./Syinx/include/SyTaskAdapter.h
 
 		./Player/CPlayer.h
 	)
@@ -108,29 +108,28 @@ function(CLANGFunction)
 endfunction()
 
 function(MSVCFunction)
-#set project include path
-	include_directories(
+	set(PROJECT_INCLUDE
 		./pkg/easylog/easylogging++.h
 
 		./pkg/inih/ini.h
 
 		./pkg/inih/cpp/INIReader.h
 
-		./Syinx/GameObject.h
+		./Syinx/include/GameObject.h
 
-		./Syinx/SConnect.h
+		./Syinx/include/SConnect.h
 
-		./Syinx/Tools.hpp
+		./Syinx/include/Tools.hpp
 
-		./Syinx/SyInc.h
+		./Syinx/include/SyInc.h
 
-		./Syinx/Syinx.h
+		./Syinx/include/Syinx.h
 
-		./Syinx/SyPthreadPool.h
+		./Syinx/include/SyPthreadPool.h
 
-		./Syinx/SyResAdapter.h
+		./Syinx/include/SyResAdapter.h
 
-		./Syinx/SyTaskAdapter.h
+		./Syinx/include/SyTaskAdapter.h
 
 		./Player/CPlayer.h
 	)
@@ -152,7 +151,7 @@ function(MSVCFunction)
 	${PROJECT_SOURCE_DIR}/../../Shard/include/libevent-master/build/include
 	)
 	message(STATUS "${PROJECT_SOURCE_DIR}")
-	add_executable(${TARGET_NAME} ${PROJECT_FILE})
+	add_executable(${TARGET_NAME} ${PROJECT_FILE} ${PROJECT_INCLUDE})
 	message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/../../")
 	target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/../../Shard/wlib/pthread/pthreadVC2.lib)
 
